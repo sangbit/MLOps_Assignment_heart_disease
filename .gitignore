@@ -1,0 +1,9 @@
+.venv
+.venv.nosync/
+__pycache__/
+.ipynb_checkpoints/
+data/
+*.pkl
+mlruns/
+.env
+.DS_Store

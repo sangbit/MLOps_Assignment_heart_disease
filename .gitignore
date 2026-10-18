@@ -7,3 +7,6 @@ data/
 mlruns/
 .env
 .DS_Store
+mlflow.db
+mlruns/
+models/

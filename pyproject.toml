@@ -12,7 +12,7 @@ filterwarnings = [
 [tool.ruff]
 line-length = 110
 target-version = "py313"
-extend-exclude = ["notebooks"]     # exploratory notebooks are not linted
+extend-exclude = ["notebooks", "*.ipynb"]     # exploratory notebooks are not linted
 
 [tool.ruff.lint]
 # E/W: style errors, F: real bugs (unused imports, undefined names), I: import order,

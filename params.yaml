@@ -1,0 +1,35 @@
+# Training configuration for `python -m src.train`.
+# Everything that affects the final model is set here, so the same file + same data
+# + same requirements always produce the same model.
+
+seed: 42            # fixes the train/test split, CV folds and Random Forest randomness
+test_size: 0.20     # share of data held back for the final test
+cv_folds: 5
+
+features:
+  drop_sparse: false   # true = drop ca/thal/slope (decided in Deliverable 2/3)
+
+# The champion model from Deliverable 3.
+# Copy the values from your "LR - tuned" (or "RF - tuned") run in MLflow -> Parameters.
+model:
+  type: logistic_regression        # logistic_regression | random_forest
+  params:
+    C: 1.0
+    l1_ratio: 1                    # 1 = L1, 0 = L2
+    solver: liblinear
+    max_iter: 2000
+
+# Example for Random Forest, if that was your champion:
+# model:
+#   type: random_forest
+#   params:
+#     n_estimators: 200
+#     max_depth: 8
+#     min_samples_leaf: 5
+#     max_features: sqrt
+
+decision_threshold: 0.5   # probability at or above this -> "disease"
+
+mlflow:
+  enabled: true                               # also log this training run to MLflow
+  experiment: heart-disease-classification

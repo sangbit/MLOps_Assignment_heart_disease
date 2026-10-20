@@ -1,0 +1,12 @@
+# Prometheus configuration: where to collect ("scrape") metrics from, and how often.
+global:
+  scrape_interval: 5s          # short interval so the demo dashboard reacts quickly
+  evaluation_interval: 5s
+
+scrape_configs:
+  - job_name: heart-disease-api
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["api:8000"]  # "api" is the service name in docker-compose.yml
+        labels:
+          service: heart-disease-api

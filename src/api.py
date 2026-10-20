@@ -8,15 +8,20 @@ Endpoints
     GET  /          short description of the service
     GET  /health    is the service up and the model loaded? (used by Docker / Kubernetes)
     GET  /model     model metadata: type, version, training metrics
+    GET  /metrics   Prometheus metrics (requests, latency, predictions) -- see monitoring.py
     POST /predict   one patient's raw values  ->  prediction + confidence
+
+Every request is logged as one JSON line and gets an X-Request-ID response header.
 """
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Response
+from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from src import predict as predictor
+from src.monitoring import MODEL_INFO, RequestLoggingMiddleware, log, record_prediction
 
 
 @asynccontextmanager
@@ -24,7 +29,11 @@ async def lifespan(app: FastAPI):
     # Load the model once when the server starts, so the first request isn't slow
     # and a missing/broken model stops the container immediately instead of on first use.
     predictor.load_model()
-    predictor.load_model_card()
+    card = predictor.load_model_card()
+    MODEL_INFO.labels(model_type=card.get("model_type", "unknown"),
+                      version=card.get("created_at", "unknown")).set(1)
+    log.info("model loaded", extra={"fields": {"event": "startup",
+             "model_type": card.get("model_type"), "model_version": card.get("created_at")}})
     yield
 
 
@@ -35,6 +44,7 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
+app.add_middleware(RequestLoggingMiddleware)
 
 
 # ---------- Request / response schemas (input validation happens here) ----------
@@ -102,7 +112,14 @@ def model_info():
              "metrics", "lineage")}
 
 
+@app.get("/metrics", include_in_schema=False)
+def metrics():
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
+
 @app.post("/predict", response_model=PredictionOutput)
 def predict(patient: PatientInput):
-    result = predictor.predict(patient.model_dump())[0]
+    values = patient.model_dump()
+    result = predictor.predict(values)[0]
+    record_prediction(result, values)
     return {**result, "model_version": predictor.load_model_card().get("created_at", "unknown")}

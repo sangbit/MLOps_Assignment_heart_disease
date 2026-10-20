@@ -1,0 +1,51 @@
+# Local monitoring stack: the API + Prometheus (collects metrics) + Grafana (dashboards).
+#
+#   docker compose up -d --build      start everything (builds the API image first)
+#   docker compose ps                 check all three are running
+#   docker compose logs -f api        follow the API's JSON request logs
+#   docker compose down               stop and remove the containers
+#
+#   API         http://localhost:8000/docs
+#   Prometheus  http://localhost:9090
+#   Grafana     http://localhost:3000   (opens the dashboard; admin login: admin / admin)
+
+services:
+  api:
+    build: .
+    image: heart-disease-api:latest
+    container_name: heart-api
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v3.13.4
+    container_name: prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=7d
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:13.2.4
+    container_name: grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "true"           # view dashboards without logging in
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/heart-disease-api.json
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    restart: unless-stopped

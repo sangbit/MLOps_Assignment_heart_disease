@@ -1,0 +1,9 @@
+# Loads every dashboard JSON file from /var/lib/grafana/dashboards at startup.
+apiVersion: 1
+providers:
+  - name: heart-disease
+    folder: Heart Disease API
+    type: file
+    disableDeletion: true
+    options:
+      path: /var/lib/grafana/dashboards

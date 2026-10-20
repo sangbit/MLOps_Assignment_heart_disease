@@ -1,0 +1,22 @@
+# Ingress: HTTP routing by host name and path, through one shared entry point (the Traefik
+# ingress controller). Requests for heart-api.local are sent to the API service.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: heart-disease-api
+  namespace: heart-disease
+  labels:
+    app: heart-disease-api
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: heart-api.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: heart-disease-api
+                port:
+                  number: 8000

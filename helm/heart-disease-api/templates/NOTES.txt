@@ -1,0 +1,11 @@
+Heart Disease API deployed: release "{{ .Release.Name }}", revision {{ .Release.Revision }},
+image {{ .Values.image.repository }}:{{ .Values.image.tag }} ({{ .Values.replicaCount }} replicas).
+
+Watch the pods start:
+  kubectl get pods -n {{ .Release.Namespace }} -w
+
+With `minikube tunnel` running in another terminal:
+  LoadBalancer:  curl http://127.0.0.1:{{ .Values.service.port }}/health
+{{- if .Values.ingress.enabled }}
+  Ingress:       curl -H "Host: {{ .Values.ingress.host }}" http://127.0.0.1/health
+{{- end }}

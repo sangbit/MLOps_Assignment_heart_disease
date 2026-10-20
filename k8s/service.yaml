@@ -1,0 +1,17 @@
+# Service of type LoadBalancer: one stable address in front of all API pods,
+# spreading requests across them. On Minikube, `minikube tunnel` gives it an external IP.
+apiVersion: v1
+kind: Service
+metadata:
+  name: heart-disease-api
+  namespace: heart-disease
+  labels:
+    app: heart-disease-api
+spec:
+  type: LoadBalancer
+  selector:
+    app: heart-disease-api           # sends traffic to pods with this label
+  ports:
+    - name: http
+      port: 8000                     # port on the load balancer
+      targetPort: http               # the container's port (8000)

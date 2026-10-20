@@ -1,0 +1,50 @@
+# Deployment: runs and maintains copies ("replicas") of the API container.
+# If a container crashes or a node dies, Kubernetes replaces it automatically.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: heart-disease-api
+  namespace: heart-disease
+  labels:
+    app: heart-disease-api
+spec:
+  replicas: 2                          # two copies: one can fail or be updated while the other serves
+  selector:
+    matchLabels:
+      app: heart-disease-api
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0                # never drop below 2 ready pods during an update
+      maxSurge: 1                      # start 1 new pod before removing an old one
+  template:
+    metadata:
+      labels:
+        app: heart-disease-api
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000                # the unprivileged user created in the Dockerfile
+      containers:
+        - name: api
+          # Image published by the CI pipeline. Replace "latest" with a commit tag (e.g. sha-31aee45)
+          # to deploy an exact, traceable version.
+          image: ghcr.io/sangbit/heart-disease-api:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8000
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }   # guaranteed minimum
+            limits:   { cpu: 500m, memory: 512Mi }   # hard ceiling
+          readinessProbe:              # "ready for traffic?" -- pod gets requests only when this passes
+            httpGet: { path: /health, port: http }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:               # "still alive?" -- pod is restarted if this keeps failing
+            httpGet: { path: /health, port: http }
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false

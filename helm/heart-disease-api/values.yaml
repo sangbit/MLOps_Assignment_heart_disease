@@ -1,0 +1,31 @@
+# Default settings for the chart. Override any of them at install/upgrade time, e.g.
+#   helm upgrade heart-api helm/heart-disease-api --set image.tag=sha-31aee45 --set replicaCount=3
+
+replicaCount: 2
+
+image:
+  repository: ghcr.io/sangbit/heart-disease-api   # published by the CI pipeline
+  tag: latest                                     # use a commit tag (sha-xxxxxxx) for traceable releases
+  pullPolicy: Always
+
+service:
+  type: LoadBalancer      # LoadBalancer | ClusterIP | NodePort
+  port: 8000
+
+ingress:
+  enabled: true
+  className: traefik
+  host: heart-api.local
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+probes:
+  path: /health
+  readinessInitialDelaySeconds: 5
+  livenessInitialDelaySeconds: 15

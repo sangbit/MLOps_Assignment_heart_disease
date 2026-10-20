@@ -1,0 +1,5 @@
+# A separate namespace keeps everything for this project grouped and easy to delete.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: heart-disease

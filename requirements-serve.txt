@@ -1,0 +1,11 @@
+# Minimal dependencies to SERVE the model (used by the Docker image).
+# No training or tracking tools here -- this keeps the container small.
+# Versions must match requirements.txt so the saved model loads correctly.
+
+numpy==2.5.3
+pandas==3.0.5
+scikit-learn==1.9.1
+joblib==1.6.0
+fastapi==0.152.0
+uvicorn==0.54.0
+pydantic==2.14.1

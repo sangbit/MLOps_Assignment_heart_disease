@@ -17,6 +17,7 @@ import pandas as pd
 from src.config import FEATURES, MODEL_DIR
 
 _model = None
+_card = None
 
 
 def load_model():
@@ -25,6 +26,14 @@ def load_model():
     if _model is None:
         _model = joblib.load(MODEL_DIR / "heart_disease_model.joblib")
     return _model
+
+
+def load_model_card() -> dict:
+    """Load the model's metadata (threshold, version info, metrics) once and reuse it."""
+    global _card
+    if _card is None:
+        _card = json.loads((MODEL_DIR / "model_card.json").read_text())
+    return _card
 
 
 def predict(patients, threshold: float | None = None) -> list[dict]:
@@ -36,14 +45,20 @@ def predict(patients, threshold: float | None = None) -> list[dict]:
         raise ValueError(f"Unknown fields: {sorted(unknown)}. Expected: {FEATURES}")
 
     if threshold is None:
-        card = json.loads((MODEL_DIR / "model_card.json").read_text())
-        threshold = card["decision_threshold"]
+        threshold = load_model_card()["decision_threshold"]
 
     X = pd.DataFrame(patients).reindex(columns=FEATURES)
     proba = load_model().predict_proba(X)[:, 1]
-    return [{"disease_probability": round(float(p), 4),
-             "prediction": int(p >= threshold),
-             "label": "Disease" if p >= threshold else "No disease"} for p in proba]
+    results = []
+    for p in proba:
+        disease = bool(p >= threshold)
+        results.append({
+            "prediction": int(disease),
+            "label": "Disease" if disease else "No disease",
+            "confidence": round(float(p if disease else 1 - p), 4),   # probability of the predicted class
+            "disease_probability": round(float(p), 4),
+        })
+    return results
 
 
 def main() -> None:
@@ -54,7 +69,8 @@ def main() -> None:
     with open(args.input) as f:
         patients = json.load(f)
     for i, result in enumerate(predict(patients), start=1):
-        print(f"Patient {i}: {result['label']:<10}  probability {result['disease_probability']:.2f}")
+        print(f"Patient {i}: {result['label']:<10}  confidence {result['confidence']:.2f}  "
+              f"(disease probability {result['disease_probability']:.2f})")
 
 
 if __name__ == "__main__":

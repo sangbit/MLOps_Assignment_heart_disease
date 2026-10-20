@@ -69,13 +69,15 @@ def saved_model_dir(fitted_pipeline, tmp_path, monkeypatch):
     (tmp_path / "model_card.json").write_text(json.dumps({"decision_threshold": 0.5}))
     monkeypatch.setattr(predict_module, "MODEL_DIR", tmp_path)
     monkeypatch.setattr(predict_module, "_model", None)
+    monkeypatch.setattr(predict_module, "_card", None)
     return tmp_path
 
 
 def test_predict_single_patient(saved_model_dir, raw_patients):
     result = predict_module.predict(raw_patients.iloc[0].to_dict())
     assert len(result) == 1
-    assert set(result[0]) == {"disease_probability", "prediction", "label"}
+    assert set(result[0]) == {"prediction", "label", "confidence", "disease_probability"}
+    assert 0.5 <= result[0]["confidence"] <= 1
     assert result[0]["label"] in {"Disease", "No disease"}
 
 

@@ -6,7 +6,7 @@ Every other module imports from here, so a column or path is defined in exactly 
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-DATA_DIR = PROJECT_ROOT / "data"
+DATA_DIR = PROJECT_ROOT / "source_data"
 MODEL_DIR = PROJECT_ROOT / "models"
 PARAMS_FILE = PROJECT_ROOT / "params.yaml"
 

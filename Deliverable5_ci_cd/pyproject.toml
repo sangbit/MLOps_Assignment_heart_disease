@@ -1,0 +1,20 @@
+# Tool configuration (pytest, ruff). Dependencies stay in requirements*.txt.
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]                 # lets tests `import src...` from the project root
+addopts = "-v --tb=short"
+filterwarnings = [
+    # Expected: Switzerland has very few healthy patients, so one stratum is smaller than 5 folds
+    "ignore:The least populated class:UserWarning",
+]
+
+[tool.ruff]
+line-length = 110
+target-version = "py313"
+extend-exclude = ["notebooks"]     # exploratory notebooks are not linted
+
+[tool.ruff.lint]
+# E/W: style errors, F: real bugs (unused imports, undefined names), I: import order,
+# B: common bug patterns, UP: modern Python syntax
+select = ["E", "W", "F", "I", "B", "UP"]

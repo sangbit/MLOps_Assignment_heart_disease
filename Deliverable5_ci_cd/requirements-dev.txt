@@ -1,0 +1,9 @@
+# Everything for local development: tests + linting + notebooks and charts.
+# Not needed to train or serve the model.
+# Install:  pip install -r requirements-dev.txt
+
+-r requirements-test.txt
+jupyter==1.1.1
+ipykernel==7.4.0
+matplotlib==3.11.2
+seaborn==0.13.2

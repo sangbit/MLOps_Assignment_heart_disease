@@ -1,0 +1,7 @@
+# Tools for automated testing and linting (used locally and by the CI pipeline).
+# Install:  pip install -r requirements-test.txt
+
+-r requirements.txt
+pytest==9.1.1
+pytest-cov==7.1.0
+ruff==0.17.1

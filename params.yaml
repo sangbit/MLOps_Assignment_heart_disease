@@ -30,6 +30,13 @@ model:
 
 decision_threshold: 0.5   # probability at or above this -> "disease"
 
+# Minimum acceptable scores. Training fails (exit code 1) if the model falls below them,
+# which makes the CI pipeline fail -- a worse model can never be packaged silently.
+quality_gate:
+  min_cv_roc_auc: 0.80
+  min_test_roc_auc: 0.80
+  min_test_recall: 0.75     # missing sick patients is the costliest error
+
 mlflow:
   enabled: true                               # also log this training run to MLflow
   experiment: heart-disease-classification

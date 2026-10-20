@@ -27,6 +27,11 @@ def clean_inputs(X: pd.DataFrame) -> pd.DataFrame:
     return X
 
 
+def clean_feature_names(transformer, input_features=None):
+    """Column names produced by clean_inputs: always FEATURES, whatever order the input had."""
+    return np.asarray(FEATURES, dtype=object)
+
+
 def build_preprocessor(drop_sparse: bool = False) -> Pipeline:
     """Cleaning + imputation + scaling + encoding, as one unfitted transformer."""
     numeric = [c for c in NUMERIC if not (drop_sparse and c in SPARSE)]
@@ -48,7 +53,7 @@ def build_preprocessor(drop_sparse: bool = False) -> Pipeline:
         ("bin", binary_steps, BINARY),
     ])
     return Pipeline([
-        ("clean", FunctionTransformer(clean_inputs, feature_names_out="one-to-one")),
+        ("clean", FunctionTransformer(clean_inputs, feature_names_out=clean_feature_names)),
         ("columns", columns),
     ])
 

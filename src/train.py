@@ -11,9 +11,11 @@ held-out test set) and writes to models/:
 """
 
 import json
+import os
 import platform
 import subprocess
-from datetime import datetime, timezone
+import sys
+from datetime import UTC, datetime
 
 import joblib
 import numpy as np
@@ -37,7 +39,8 @@ INPUT_SCHEMA = {
     "age": "number, years", "sex": "0 = female, 1 = male",
     "cp": "1 typical angina, 2 atypical angina, 3 non-anginal, 4 asymptomatic",
     "trestbps": "number, mm Hg (0 = not recorded)", "chol": "number, mg/dl (0 = not recorded)",
-    "fbs": "0/1, fasting blood sugar > 120 mg/dl", "restecg": "0 normal, 1 ST-T abnormality, 2 LV hypertrophy",
+    "fbs": "0/1, fasting blood sugar > 120 mg/dl",
+    "restecg": "0 normal, 1 ST-T abnormality, 2 LV hypertrophy",
     "thalach": "number, max heart rate", "exang": "0/1, exercise-induced angina",
     "oldpeak": "number, ST depression", "slope": "1 up, 2 flat, 3 down",
     "ca": "0-3, vessels coloured by fluoroscopy", "thal": "3 normal, 6 fixed defect, 7 reversible defect",
@@ -102,7 +105,7 @@ def main() -> None:
 
     card = {
         "model_name": "heart-disease-classifier",
-        "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "created_at": datetime.now(UTC).isoformat(timespec="seconds"),
         "model_type": cfg["model"]["type"],
         "model_params": cfg["model"].get("params") or {},
         "decision_threshold": threshold,
@@ -137,13 +140,54 @@ def main() -> None:
 
     # 6. Report
     print(f"Model:            {cfg['model']['type']}  {card['model_params']}")
-    print(f"Data fingerprint: {card['lineage']['data_fingerprint']}   git commit: {card['lineage']['git_commit']}")
+    lineage = card["lineage"]
+    print(f"Data fingerprint: {lineage['data_fingerprint']}   git commit: {lineage['git_commit']}")
     print(f"CV  ROC-AUC {metrics['cv_roc_auc_mean']:.4f} ± {metrics['cv_roc_auc_std']:.4f} | "
           f"recall {metrics['cv_recall_mean']:.4f}")
     print(f"Test ROC-AUC {metrics['test_roc_auc']:.4f} | recall {metrics['test_recall']:.4f} | "
           f"precision {metrics['test_precision']:.4f} | accuracy {metrics['test_accuracy']:.4f}")
     print(f"Saved to {MODEL_DIR.relative_to(PROJECT_ROOT)}/: heart_disease_model.joblib, "
           "preprocessor.joblib, model_card.json")
+
+    # 7. Quality gate
+    failures = check_quality_gate(metrics, cfg.get("quality_gate", {}))
+    write_ci_summary(card, failures)
+    if failures:
+        print("QUALITY GATE FAILED:\n  " + "\n  ".join(failures))
+        sys.exit(1)
+    print("Quality gate passed.")
+
+
+def check_quality_gate(metrics: dict, gate: dict) -> list[str]:
+    """Return a list of failed checks (empty list = passed)."""
+    checks = {"min_cv_roc_auc": "cv_roc_auc_mean", "min_test_roc_auc": "test_roc_auc",
+              "min_test_recall": "test_recall"}
+    return [f"{metric} = {metrics[metric]:.4f} is below the minimum {gate[key]}"
+            for key, metric in checks.items() if key in gate and metrics[metric] < gate[key]]
+
+
+def write_ci_summary(card: dict, failures: list[str]) -> None:
+    """On GitHub Actions, add a metrics table to the workflow run's summary page."""
+    summary_file = os.environ.get("GITHUB_STEP_SUMMARY")
+    if not summary_file:
+        return
+    m = card["metrics"]
+    lines = [
+        "## Model training results",
+        f"**Model:** `{card['model_type']}` {card['model_params']}  ",
+        f"**Data fingerprint:** `{card['lineage']['data_fingerprint']}` · "
+        f"**Commit:** `{card['lineage']['git_commit']}`",
+        "",
+        "| Metric | Cross-validation (mean ± std) | Test set |",
+        "|---|---|---|",
+        *[f"| {name} | {m[f'cv_{k}_mean']:.4f} ± {m[f'cv_{k}_std']:.4f} | {m[f'test_{k}']:.4f} |"
+          for name, k in [("Accuracy", "accuracy"), ("Precision", "precision"),
+                          ("Recall", "recall"), ("ROC-AUC", "roc_auc")]],
+        "",
+        "**Quality gate:** " + ("❌ FAILED — " + "; ".join(failures) if failures else "✅ passed"),
+    ]
+    with open(summary_file, "a") as f:
+        f.write("\n".join(lines) + "\n")
 
 
 if __name__ == "__main__":
